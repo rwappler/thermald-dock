@@ -7,18 +7,38 @@
 
 #include <QSystemTrayIcon>
 #include <QDialog>
+#include <QStandardItemModel>
+#include <QAction>
 
 #ifndef THERMALD_DOCK_HPP_
 #define THERMALD_DOCK_HPP_
 
-class Window: QDialog {
+namespace thermald_dock {
+class Window: public QDialog {
 Q_OBJECT
 
 public:
 	Window();
+	void show();
+	QSystemTrayIcon& trayicon();
+	void setActions(QStandardItemModel&);
+
+private slots:
+	void toggleVisible();
 
 private:
+	QAction* exitAction;
 	QSystemTrayIcon* trayIcon;
 };
+
+class ThermaldControl {
+
+public:
+	ThermaldControl(QStandardItemModel&);
+
+private:
+	QStandardItemModel& model;
+};
+}
 
 #endif /* THERMALD_DOCK_HPP_ */
