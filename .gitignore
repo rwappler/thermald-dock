@@ -1,0 +1,12 @@
+.cproject
+.project
+.settings
+CMakeCache.txt
+CMakeFiles
+CTestTestfile.cmake
+Debug
+Makefile
+bin
+cmake_install.cmake
+test-bin
+DartConfiguration.tcl

@@ -1,0 +1,5 @@
+<!DOCTYPE RCC><RCC version="1.0">
+	<qresource prefix="/">
+		<file>resources/thermald-dock.png</file>
+ 	</qresource>
+</RCC>
