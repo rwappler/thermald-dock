@@ -6,46 +6,124 @@
  */
 
 #include <algorithm>
-#include <QtGui>
+#include <vector>
+#include <iostream>
 #include <QDir>
 #include <QMessageBox>
 #include <QApplication>
-#include <QStandardItemModel>
 #include <QMenu>
+#include <QDBusConnection>
+#include <QDBusMessage>
+
 #include "thermald-dock.hpp"
 
 namespace thermald_dock {
 
-ThermaldControl::ThermaldControl(QStandardItemModel& itemModel) : model(itemModel) {}
-Window::Window() {
+Dock::Dock() {
 	this->trayIcon = new QSystemTrayIcon(this);
 	this->trayIcon->setIcon(QIcon(":/resources/thermald-dock.png"));
 	this->setWindowIcon(QIcon(":/resources/thermald-dock.png"));
-	this->trayIcon->connect(trayIcon,
-			SIGNAL(activated(QSystemTrayIcon::ActivationReason)), this,
-			SLOT(toggleVisible()));
 	this->exitAction = new QAction(QObject::tr("Exit"), this);
+
+	connect(this->exitAction, SIGNAL(triggered()), QCoreApplication::instance(),
+			SLOT(quit()));
+
+	this->menu = new QMenu();
+	this->menu->addAction(exitAction);
+	this->trayIcon->setContextMenu(menu);
 }
 
-QSystemTrayIcon& Window::trayicon() {
-	return *this->trayIcon;
+void Dock::setPreferences(QObject& receiver, QList<QAction*>& preferences) {
+	QActionGroup* actions = new QActionGroup(this->menu);
+	for (QList<QAction*>::iterator action = preferences.begin();
+			action != preferences.end(); action++) {
+		actions->addAction(*action);
+		this->menu->insertAction(this->exitAction, *action);
+	}
+
+	this->menu->insertSeparator(this->exitAction);
+
+	connect(menu, SIGNAL(triggered(QAction*)), &receiver,
+			SLOT(currentPreference(QAction*)));
+
 }
 
-void Window::setActions(QStandardItemModel& model) {
-	/* TODO: Register Actions from ThermaldControl.
-	 * - Add Quit-Action
-	 * - Consider STL-Vector for passing actions
-	 * - Provide slots in the controller
-	 */
-}
-
-void Window::toggleVisible() {
+void Dock::toggleVisible() {
 	setVisible(!isVisible());
 }
-void Window::show() {
-	this->QDialog::show();
+
+void Dock::toggleVisible(QSystemTrayIcon::ActivationReason reason) {
+	switch (reason) {
+	case QSystemTrayIcon::Trigger:
+		toggleVisible();
+		break;
+	default:
+		break; // no-op
+	}
+}
+
+void Dock::show() {
+	// this->QWidget::show();
 	trayIcon->setVisible(true);
 }
+
+ThermaldControl::ThermaldControl() {
+
+	QAction* energyConservative = new QAction(
+			QObject::tr("Energy Conservative"), this);
+	QAction* performance = new QAction(QObject::tr("Performance"), this);
+	QAction* fallback = new QAction(QObject::tr("Fallback"), this);
+	QAction* disable = new QAction(QObject::tr("Disable"), this);
+
+	energyConservative->setCheckable(true);
+	energyConservative->setData("ENERGY_CONSERVE");
+	performance->setCheckable(true);
+	performance->setData("PERFORMANCE");
+	fallback->setCheckable(true);
+	fallback->setData("FALLBACK");
+	disable->setCheckable(true);
+	disable->setData("DISABLE");
+	this->prefs << energyConservative << performance << fallback << disable;
+}
+
+const QString ThermaldControl::currentPreference() {
+
+	return "";
+}
+
+void ThermaldControl::maxTemperature(uint degC) {
+}
+
+QList<QAction*>& ThermaldControl::preferences() {
+	return this->prefs;
+}
+
+const uint ThermaldControl::maxTemperature() {
+	return 0;
+}
+
+void ThermaldControl::currentPreference(QString profile) {
+
+	QDBusConnection sysBus(QDBusConnection::systemBus());
+
+	if (!sysBus.isConnected())
+		qFatal("Could not connect to system bus.");
+
+	QDBusMessage msg(
+			QDBusMessage::createMethodCall("org.freedesktop.thermald",
+					"/org/freedesktop/thermald", "org.freedesktop.thermald",
+					"SetCurrentPreference"));
+	msg << profile;
+
+	QDBusMessage reply = sysBus.call(msg);
+	if (reply.type() == QDBusMessage::ErrorMessage)
+		std::cerr << reply.errorMessage().toStdString();
+}
+
+void ThermaldControl::currentPreference(QAction* a) {
+	currentPreference(a->data().value<QString>());
+}
+
 }
 
 int main(int argc, char** argv) {
@@ -61,8 +139,12 @@ int main(int argc, char** argv) {
 
 	QApplication::setQuitOnLastWindowClosed(false);
 
-	thermald_dock::Window window;
-	window.setVisible(false);
-	window.show();
+	thermald_dock::Dock dock;
+
+	thermald_dock::ThermaldControl ctrl;
+
+	dock.show();
+	dock.setPreferences(ctrl, ctrl.preferences());
 	return thermald_dock.exec();
 }
+

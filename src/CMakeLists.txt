@@ -1,4 +1,4 @@
-find_package(Qt4 4.8 REQUIRED QtCore QtGui)
+find_package(Qt4 4.8 REQUIRED QtCore QtGui QtDBus)
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include(${QT_USE_FILE})
