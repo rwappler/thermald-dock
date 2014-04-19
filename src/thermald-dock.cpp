@@ -1,8 +1,25 @@
 /*
  * thermald-dock.cpp
  *
- *  Created on: 18.04.2014
- *      Author: mary
+ * Copyright 2014, Robert Wappler
+ *
+ * This file is part of thermald-dock.
+ *
+ * Foobar is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Foobar is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * Created on: 18.04.2014
+ *     Author: Robert Wappler
  */
 
 #include <algorithm>
@@ -45,6 +62,7 @@ void Dock::setPreferences(QObject& receiver, QList<QAction*>& preferences) {
 
 	connect(menu, SIGNAL(triggered(QAction*)), &receiver,
 			SLOT(currentPreference(QAction*)));
+	connect(menu, SIGNAL(aboutToShow()), &receiver, SLOT(currentPreference()));
 
 }
 
@@ -63,7 +81,6 @@ void Dock::toggleVisible(QSystemTrayIcon::ActivationReason reason) {
 }
 
 void Dock::show() {
-	// this->QWidget::show();
 	trayIcon->setVisible(true);
 }
 
@@ -84,11 +101,30 @@ ThermaldControl::ThermaldControl() {
 	disable->setCheckable(true);
 	disable->setData("DISABLE");
 	this->prefs << energyConservative << performance << fallback << disable;
+
+	currentPreference();
 }
 
 const QString ThermaldControl::currentPreference() {
+	QDBusMessage reply = QDBusConnection::systemBus().call(
+			QDBusMessage::createMethodCall("org.freedesktop.thermald",
+					"/org/freedesktop/thermald", "org.freedesktop.thermald",
+					"GetCurrentPreference"));
+	if (reply.type() == QDBusMessage::ErrorMessage)
+		qFatal("Could not determine current thermald profile");
 
-	return "";
+	QList<QVariant> currentProfiles = reply.arguments();
+	if (currentProfiles.length() < 1)
+		qWarning("Got empty respnse, when asking for current thermald profile");
+	else {
+		QString prefStr = currentProfiles[0].value<QString>();
+		for (QList<QAction*>::iterator action = prefs.begin();
+				action != prefs.end(); action++) {
+			(*action)->setChecked(
+					(*action)->data().value<QString>() == prefStr);
+		}
+	}
+	return QString();
 }
 
 void ThermaldControl::maxTemperature(uint degC) {

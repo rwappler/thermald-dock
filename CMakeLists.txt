@@ -8,5 +8,3 @@ enable_testing()
 set(CMAKE_BUILD_TYPE DEBUG)
 
 add_subdirectory(src bin)
-add_subdirectory(test test-bin)
-
