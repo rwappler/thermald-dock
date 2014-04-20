@@ -13,3 +13,5 @@ set(thermald_dock_SRCS thermald-dock.cpp ${thermald_dock_RCCS})
 
 add_executable(thermald-dock ${thermald_dock_MOC} ${thermald_dock_SRCS})
 target_link_libraries(thermald-dock ${QT_LIBRARIES})
+
+install(TARGETS thermald-dock DESTINATION bin)
